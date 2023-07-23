@@ -1,30 +1,12 @@
-import { Component } from 'react';
+import { useState } from 'react';
 import './App.css';
+import Status from './components/Status';
+import Card from './components/Card';
 
-class App extends Component{
-  constructor(props){
-    super(props);
-    this.imagePath = 'Cards/';
-    this.images = this.fillImages();
-    this.shuffleImages(this.images);
-    this.state = {
-      images : this.images, 
-      firstPick : -1, 
-      secondPick :-1, 
-      matches : 0,
-      tries : 0
-    };
-    //binding
-    this.handleClick = this.handleClick.bind(this);
-    this.checkCards = this.checkCards.bind(this);
-    this.isMatch = this.isMatch.bind(this);
+  //create global constants, including functional expressions
+const imagePath = 'Cards/';
 
-    //no explicit call to render
-  }
-  //end of constructor
-
-  fillImages() {
-    //console.log("fillImages called");
+const fillImages = () => {
     let images = Array(20).fill(null);
         let values = ['a', 'k', 'q', 'j', 't', '9', '8', '7', '6', '5'];
         let suits = ['h', 's'];
@@ -38,147 +20,154 @@ class App extends Component{
         return images;
   }
 
-  
-  shuffleImages(images){
-    //console.log("shuffleImages called");
+const shuffleImages = (images) => {
     for (let i = 0; i < images.length; i++) {
       let rnd = Math.floor(Math.random() * images.length);
       [images[i], images[rnd]] = [images[rnd], images[i]];
     }
   }
-  //renderCard(i)
-  renderCard(i){
-    console.log("renderCard called");
-
-    const image = (this.state.images[i] == null) ? 'none' : 
-            ( this.state.firstPick == i || this.state.secondPick == i) ? 
-            'url(' + this.imagePath + this.state.images[i] + ')' : 
-            'url(' + this.imagePath + 'black_back.jpg)';
-        const enabled = (this.state.images[i] != null && 
-            (i != this.state.firstPick && i != this.state.secondPick) &&
-            (this.state.firstPick == -1 || this.state.secondPick == -1) &&
-            (this.state.matches < 10)) ? true : false;
-      
-        const eventHandler = (enabled) ? this.handleClick : () => {};
-        const cursor = (enabled) ? "pointer" : "none";
-        const style = { 
-          backgroundImage: image, 
-          cursor: cursor };
-
-        const output = 
-            <div id={i} key={i} 
-                name="card" 
-                class="col-sm-2 card"
-                style={style}
-                onClick={eventHandler}
-                >&nbsp;
-            </div>
-        ;
-        return output;
+  //check this
+function fillAndShuffle() {
+    let images = fillImages();
+    shuffleImages(images);
+    return images;
   }
- 
-  handleClick(event){
-    const i=event.target.id;
-    console.log("handleClick called on " + i);
-    const index = parseInt(event.target.id);
 
-    if (this.state.firstPick == -1)
-        this.setState(
-          {firstPick : index}
-        );
-    else {
-      this.setState(
-        {secondPick : index}
-      );      
+const isMatch = (firstPick, secondPick, imagesIn) => {
+  if(firstPick!=-1 && secondPick!=-1 && (imagesIn[firstPick].substr(4, 1) == imagesIn[secondPick].substr(4, 1)))
+    {return true;}
+  else
+    {return false;}
+  }
+
+  //start function
+function App (){
+  //create state variables
+  // pattern is const [xIsNext, setXIsNext] = useState(true);
+  const [images, setImages] = useState(fillAndShuffle());
+  const [matches, setMatches] = useState(0);
+  const [tries, setTries] = useState(0);
+  const [picks, setPicks] = useState({first:-1, second: -1});
+
+   
+  const renderCard = (i) =>{
+    const image = (images[i] === null) ? 'none' : 
+    (( picks.first === i || picks.second === i) ? 
+    'url(' + imagePath + images[i] + ')' : 
+    'url(' + imagePath + 'black_back.jpg)');
+    const enabled = (images[i] !== null && 
+      (i !== picks.first && i !== picks.second) &&
+      (picks.first === -1 || picks.second === -1) &&
+      (matches < 10)) ? true : false;
+    
+    const eventHandler = (enabled) ? handleClick : () => {};
+    const cursor = (enabled) ? "pointer" : "none";
+    const style = { 
+    backgroundImage: image, 
+    cursor: cursor };
+
+    return (
+      <Card 
+        index={i}
+        eventHandler = {eventHandler}
+        style={style}
+      />
+      );
     }
-    
-    setTimeout(this.checkCards, 2000);
-  }
+    //end renderCard
 
-  isMatch(){
-    console.log("isMatch called");
-    if(this.state.firstPick!=-1 && this.state.secondPick!=-1 && (this.state.images[this.state.firstPick].substr(4, 1) == this.state.images[this.state.secondPick].substr(4, 1)))
-      {return true;}
-    else
-      {return false;}
-    
-  }
+    const handleClick = (event) =>{
+      const index = parseInt(event.target.id);
+      console.log("handleclick called on " + index);
+      let localPicks = {...picks};
 
-  checkCards(){
-//spread operator makes copy
-//spread operator can use [] or {}
-if(this.state.secondPick!=-1)
-  {
-    let result = {...this.state};
+      if (localPicks.first == -1)
+          localPicks.first = index;
+      else {
+          localPicks.second=index;   
+      }
+      
+      setPicks(localPicks);
 
-    result.tries++;
-    if (this.isMatch()) {
-          result.matches ++;
-          result.images[result.firstPick] = null;
-          result.images[result.secondPick] = null;
+      let localImages = [...images];
+      let matchesIn = matches;
+      let triesIn = tries;
+      setTimeout(
+        checkCards, 
+        1600, 
+        localPicks.first, localPicks.second, localImages, tries, matches);
+      
+        //setImages(localImages);
+        //setMatches(matchesIn);
+        //setTries(triesIn);
+    }
+    //end handleClick
+    const checkCards = (firstPick, secondPick, localImages, triesIn, matchesIn) => {
+      if(secondPick!==-1)
+      {
+        triesIn++;
+        if (isMatch(firstPick, secondPick, localImages)) {
+          //changes state but we cant do that here, alter the copy to save by ref
+          matchesIn++;
+          //changes state but we can't do that here
+          localImages[firstPick] = null;
+          localImages[secondPick] = null;
+          }
+      //changes state - use setState or pass back?
+      setPicks({first: -1, second:-1});
+      setMatches(matchesIn);
+      setTries(triesIn);
+      setImages(localImages);
         }
-    result.firstPick = -1;
-    result.secondPick = -1;
-
-    this.setState({ 
-      images: result.images, 
-      firstPick: result.firstPick, 
-      secondPick: result.secondPick, 
-      matches: result.matches, 
-      tries: result.tries });
-  }
-
-}
-
-   render(){
-    let status = (this.state.matches < 10) ?
-    'Matches: ' + this.state.matches + " Tries: " + this.state.tries :
-    "Congratulations!  You found all 10 matches in " + this.state.tries + " tries!";
+      
+      }
+      //end checkCards
+  
+  
+    let status = (matches < 10) ?
+    'Matches: ' + matches + " Tries: " + tries :
+    "Congratulations!  You found all 10 matches in " + tries + " tries!";
   
     return (
     <div className="container" id="board">
-            <div className="pb-2" id="status">{status}</div>
+            <Status status={status}/>
             <div className="row">
                 <div className="col-sm-1"></div>
-                {this.renderCard(0)}
-                {this.renderCard(1)}
-                {this.renderCard(2)}
-                {this.renderCard(3)}
-                {this.renderCard(4)}
-                <div class="col-1"></div>
-            </div>
-            <div className="row">
-                <div className="col-sm-1"></div>
-                {this.renderCard(5)}
-                {this.renderCard(6)}
-                {this.renderCard(7)}
-                {this.renderCard(8)}
-                {this.renderCard(9)}
+                {renderCard(0)}
+                {renderCard(1)}
+                {renderCard(2)}
+                {renderCard(3)}
+                {renderCard(4)}
                 <div className="col-1"></div>
             </div>
             <div className="row">
                 <div className="col-sm-1"></div>
-                {this.renderCard(10)}
-                {this.renderCard(11)}
-                {this.renderCard(12)}
-                {this.renderCard(13)}
-                {this.renderCard(14)}
+                {renderCard(5)}
+                {renderCard(6)}
+                {renderCard(7)}
+                {renderCard(8)}
+                {renderCard(9)}
                 <div className="col-1"></div>
             </div>
             <div className="row">
                 <div className="col-sm-1"></div>
-                {this.renderCard(15)}
-                {this.renderCard(16)}
-                {this.renderCard(17)}
-                {this.renderCard(18)}
-                {this.renderCard(19)}
+                {renderCard(10)}
+                {renderCard(11)}
+                {renderCard(12)}
+                {renderCard(13)}
+                {renderCard(14)}
+                <div className="col-1"></div>
+            </div>
+            <div className="row">
+                <div className="col-sm-1"></div>
+                {renderCard(15)}
+                {renderCard(16)}
+                {renderCard(17)}
+                {renderCard(18)}
+                {renderCard(19)}
                 <div className="col-1"></div>
             </div>
         </div>);
-    
-    //document.getElementById("top").innerHTML = output;);
-
-}
 }
 
 export default App;
